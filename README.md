@@ -1,4 +1,9 @@
-# pandas
+# coding: utf-8
+
+# # Data Set Up
+
+# In[30]:
+
 
 #import dependencies
 import pandas as pd
@@ -344,43 +349,53 @@ scores_by_size.style.format({'Average Math Score': '{:.1f}',
 
 # # Scores by School Type
 
-# In[53]:
+# In[56]:
 
 
-#group by type of school
+# group by type of school
 by_type = merged_df.groupby("type")
 
-#calculations 
-avg_math = by_type['math_score'].mean()
-avg_read = by_type['math_score'].mean()
-pass_math = merged_df[merged_df['math_score'] >= 70].groupby('type')['Student ID'].count()/by_type['Student ID'].count()
-pass_read = merged_df[merged_df['reading_score'] >= 70].groupby('type')['Student ID'].count()/by_type['Student ID'].count()
-overall = merged_df[(merged_df['reading_score'] >= 70) & (merged_df['math_score'] >= 70)].groupby('type')['Student ID'].count()/by_type['Student ID'].count()
+#find average score by type
+avg_scores_by_type = by_type['math_score', 'reading_score'].mean().reset_index()
+
+#find # passing by type of school
+pass_read_by_type = merged_df[merged_df['reading_score'] >= 70].groupby("type")['reading_score'].count().reset_index()
+pass_read_by_type.rename(columns = {'reading_score': '# pass reading'}, inplace=True)
+
+pass_math_by_type = merged_df[merged_df['math_score'] >= 70].groupby("type")['math_score'].count().reset_index()
+pass_math_by_type.rename(columns = {'math_score': '# pass math'}, inplace=True)
+
+#find number of students by type of school
+size_by_type = by_type['name'].count().reset_index()
+size_by_type.rename(columns = {'name':'size'}, inplace = True)
 
 
-# In[52]:
+# In[55]:
 
 
-#Create Dataframe            
-scores_by_type = pd.DataFrame({
-    "Average Math Score": avg_math,
-    "Average Reading Score": avg_read,
-    '% Passing Math': pass_math,
-    '% Passing Reading': pass_read,
-    "Overall Passing Rate": overall})
-    
-#reorder columns to match output example
-scores_by_type = scores_by_type[[
-    "Average Math Score",
-    "Average Reading Score",
-    '% Passing Math',
-    '% Passing Reading',
-    "Overall Passing Rate"]]
-scores_by_type.index.name = "Type of School"
+#merge data for calculations
+scores_by_type = pd.merge(avg_scores_by_type, pass_read_by_type, on = "type").merge(pass_math_by_type, on="type").merge(size_by_type, on="type")
+scores_by_type['% Passing Reading'] = scores_by_type['# pass reading']/scores_by_type['size']
+scores_by_type['% Passing Math'] = scores_by_type['# pass math']/scores_by_type['size']
+
+# only keep needed columns
+scores_by_type = scores_by_type[["type", 'math_score', 'reading_score', '% Passing Math', '% Passing Reading']]
+
+# calc passing rate for each type
+scores_by_type['Overall Passing Rate'] = (scores_by_type['% Passing Reading']+ scores_by_type['% Passing Math'])/2
 
 #formatting
-scores_by_type.style.format({'Average Math Score': '{:.1f}', 
-                              'Average Reading Score': '{:.1f}', 
-                              '% Passing Math': '{:.1%}', 
-                              '% Passing Reading':'{:.1%}', 
-                              'Overall Passing Rate': '{:.1%}'})
+scores_by_type.rename(columns = {"type": "School Size",'math_score': 'Average Math Score', 'reading_score':'Average Reading Score'}, inplace=True)
+scores_by_type.set_index('School Size', inplace=True)
+scores_by_type.style.format({'Average Math Score': '{:.1f}', 'Average Reading Score': '{:.1f}', '% Passing Math': '{:.1%}', '% Passing Reading':'{:.1%}', 'Overall Passing Rate': '{:.1%}'})
+
+
+# # Academy of Py Analysis
+
+# -Charter schools appear to out perform District schools.  Top 5 schools are Charter, while the bottom 5 are District. 
+
+# -Schools with less than 2000 students appear to have higher passing rates. Small and Medium sized schools perform better in passing rates than Large Schools.
+
+# -Bottom performing schools spend more money per student than the top performing.
+
+# -Spending more than $615 per student does not appear to have much effect on the passing rates, even showing a decrease in grades as spending per student increases.
